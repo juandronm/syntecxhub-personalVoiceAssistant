@@ -7,7 +7,7 @@ from huggingface_hub import InferenceClient
 
 
 DEFAULT_STT_MODEL = "openai/whisper-large-v3-turbo"
-DEFAULT_CHAT_MODEL = "meta-llama/Llama-3.2-3B-Instruct"
+DEFAULT_CHAT_MODEL = "meta-llama/Llama-3.1-8B-Instruct:cerebras"
 DEFAULT_SYSTEM_PROMPT = "You are a helpful personal voice assistant."
 DEFAULT_RECORDING_PATH = Path(__file__).resolve().parent / "audios" / "live_input.wav"
 
@@ -132,6 +132,11 @@ def parse_args() -> argparse.Namespace:
         help="Print available audio devices and exit.",
     )
     parser.add_argument(
+        "--record-only",
+        action="store_true",
+        help="Record live microphone audio and exit without transcription.",
+    )
+    parser.add_argument(
         "--stt-model",
         default=os.getenv("HF_STT_MODEL", DEFAULT_STT_MODEL),
         help=f"Speech-to-text model. Default: {DEFAULT_STT_MODEL}",
@@ -160,8 +165,6 @@ def main() -> None:
         list_audio_devices()
         return
 
-    api_key = load_api_key()
-
     audio_path = args.audio_path or record_audio(
         args.recorded_output,
         duration=args.duration,
@@ -169,6 +172,11 @@ def main() -> None:
         channels=args.channels,
         device=args.device,
     )
+
+    if args.record_only:
+        return
+
+    api_key = load_api_key()
 
     transcript = transcribe_audio(audio_path, api_key, args.stt_model)
     print("Transcript:")
