@@ -4,7 +4,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from huggingface_hub import InferenceClient
-from openai import OpenAI
 
 
 DEFAULT_STT_MODEL = "openai/whisper-large-v3-turbo"
@@ -21,13 +20,6 @@ def load_api_key() -> str:
     if not api_key:
         raise RuntimeError("HF_API_KEY is missing. Add it to src/.env or your shell environment.")
     return api_key
-
-
-def huggingface_openai_client(model: str, api_key: str) -> OpenAI:
-    return OpenAI(
-        base_url=f"https://api-inference.huggingface.co/models/{model}/v1/",
-        api_key=api_key,
-    )
 
 
 def record_audio(output_path: Path, duration: float, sample_rate: int, channels: int, device: int | str | None) -> Path:
@@ -83,8 +75,9 @@ def transcribe_audio(audio_path: Path, api_key: str, model: str) -> str:
 
 
 def ask_llm(transcript: str, api_key: str, model: str, system_prompt: str) -> str:
-    client = huggingface_openai_client(model, api_key)
-    response = client.chat.completions.create(
+    provider = os.getenv("HF_CHAT_PROVIDER", "auto")
+    client = InferenceClient(provider=provider, api_key=api_key, timeout=120)
+    response = client.chat_completion(
         model=model,
         messages=[
             {"role": "system", "content": system_prompt},
